@@ -10,7 +10,7 @@ from sklearn.cross_decomposition import PLSRegression
 #脱ブタン塔のプロセスデータを読み込む
 df = pd.read_csv('debutanizer_data.csv')
 
-#時系列データなので、indexに時間を適当に割り当てる
+#時系列データなので、実務データを想定しindexに時刻を割り当てる
 # 開始日時を指定
 start_datetime = '2024-01-01 00:00:00'
 # DataFrameの長さを取得
@@ -87,7 +87,7 @@ def evaluate_performance(X, y, y_train, model, save_to_csv=False, filename='perf
     # 時系列のプロット
     plt.figure(figsize=(10, 5))
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))  # 日時形式を設定
-    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=5))  # 4時間ごとに目盛りを設定
+    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=5))  # 5時間ごとに目盛りを設定
     plt.plot(y.index, y, label='Actual y', color='blue', marker='', linestyle='-')
     plt.plot(y.index, y_pred, label='Predicted y', color='red', marker='', linestyle='-')
     #plt.gcf().autofmt_xdate()  # x軸のラベルを自動で斜めにして読みやすくする
@@ -150,7 +150,7 @@ def perform_pls_regression(X, y, fold_number=5, test_size=0.4, shuffle=False):
     test_size : float, optional
         データを分割する際のテストデータの割合 (default is 0.4)。
     shuffle : bool, optional
-        データ分割時にデータをシャッフルするかどうか (default is False)。
+        データ分割時にデータをシャッフルするかどうか (時系列データを想定して、デフォルトはFalse)。
 
     Returns:
     best_components : 最適な主成分数
