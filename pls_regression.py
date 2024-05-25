@@ -22,11 +22,28 @@ df.index = date_index
 
 # 目的変数の測定時間を考慮（5分間）
 df['y'] = df['y'].shift(5)
+
 #yがnanとなる期間のデータを削除
 df = df.dropna()
+
 # 説明変数Xと目的変数yに分割
 X = df.iloc[:, :-1]
 y = df.iloc[:, -1]
+
+#時間遅れ変数を作成
+delay_number = 18
+X_with_delays = pd.DataFrame()
+for col in X.columns:
+    col_name = f"{col}_delay_{delay_number}"
+    X_with_delays[col_name] = X[col].shift(delay_number)
+
+# 時間遅れ変数とｙのデータフレームを作成
+X_with_delays['y'] = y
+X_with_delays = X_with_delays.dropna()
+
+# 目的変数と説明変数に分割
+X = X_with_delays.iloc[:, :-1]
+y = X_with_delays['y']
 
 def evaluate_performance(X, y, y_train, model, save_to_csv=False, filename='performance.csv'):
     """
