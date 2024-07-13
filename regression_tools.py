@@ -416,3 +416,114 @@ def perform_rf_regression(X, y, number_of_trees=300, test_size=0.4, shuffle=Fals
     evaluate_model(X_train, y_train, X_test, y_test, model=rf_final)
 
     return optimal_x_variables_rate, rf_final
+
+def evaluate_performance_gpr(X, y, y_train, model, save_to_csv=False, filename='performance.csv'):
+    """
+    モデルの性能を評価し、結果をプロットします。
+    オプションで予測結果をCSVファイルに保存します。
+    
+    Parameters:
+    X : pd.DataFrame
+        説明変数のデータセット
+    y : pd.Series
+        目的変数の値
+    y_train : pd.Series
+        トレーニングデータの目的変数（標準化解除に使用）
+    model : sklearn model
+        評価する訓練済みのモデル
+    save_to_csv : bool, optional
+        結果をCSVファイルに保存するかどうかを指定 (default is False)
+    filename : str, optional
+        出力するCSVファイルの名前 (default is 'performance.csv')
+
+    Returns:
+    r2 : 決定係数R^2
+    rmse : RMSE
+    mae : MAE
+        
+    """
+    # ｙの推定値を算出
+    estimated_y_train, estimated_y_train_std = model.predict(X, return_std=True)
+    y_pred = estimated_y_train * y_train.std() + y_train.mean() 
+    y_pred_std = estimated_y_train_std* y_train.std()
+    
+    # 性能指標の算出
+    r2 = metrics.r2_score(y, y_pred)
+    rmse = np.sqrt(metrics.mean_squared_error(y, y_pred))
+    mae = metrics.mean_absolute_error(y, y_pred)
+    print(f"R^2: {r2:.3f}, RMSE: {rmse:.3f}, MAE: {mae:.3f}")
+    
+    # プロットの作成
+    plt.figure(figsize=(6, 6))
+    plt.scatter(y, y_pred, color='blue')
+    y_max = max(y.max(), y_pred.max())
+    y_min = min(y.min(), y_pred.min()) 
+    
+     # 取得した最小値-5%から最大値+5%まで、対角線を作成
+    plt.plot([y_min - 0.05 * (y_max - y_min), y_max + 0.05 * (y_max - y_min)],
+             [y_min - 0.05 * (y_max - y_min), y_max + 0.05 * (y_max - y_min)], 'k-') 
+    plt.ylim(y_min - 0.05 * (y_max - y_min), y_max + 0.05 * (y_max - y_min))
+    plt.xlim(y_min - 0.05 * (y_max - y_min), y_max + 0.05 * (y_max - y_min)) 
+    plt.xlabel('Actual y')
+    plt.ylabel('Predicted y')
+    # テキストボックスを右下に配置
+    plt.text(0.98, 0.02, f'R^2: {r2:.3f}\nRMSE: {rmse:.3f}\nMAE: {mae:.3f}', transform=plt.gca().transAxes,
+             fontsize=9, verticalalignment='bottom', horizontalalignment='right', 
+             bbox=dict(boxstyle="round,pad=0.3", edgecolor='black', facecolor='white', alpha=0.5))
+    plt.title(filename[:-4])
+    plt.grid(False)
+    plt.axis('equal')
+    plt.show()
+
+    # 時系列のプロット
+    plt.figure(figsize=(10, 5))
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))  # 日時形式を設定
+    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=5))  # 4時間ごとに目盛りを設定
+    plt.plot(y.index, y, label='Actual y', color='blue', marker='', linestyle='-')
+    plt.plot(y.index, y_pred, label='Predicted y', color='red', marker='', linestyle='-')
+    plt.fill_between(y.index, y_pred - 1.96*y_pred_std, y_pred + 1.96*y_pred_std, alpha=0.2, color='b', label='95% confidence interval')
+    #plt.gcf().autofmt_xdate()  # x軸のラベルを自動で斜めにして読みやすくする
+    plt.ylabel('y')
+    plt.title(filename[:-4])
+    plt.legend()
+    plt.show()
+    
+    # データの保存
+    if save_to_csv:
+        results_df = pd.DataFrame({
+            'Actual': y,
+            'Predicted': y_pred.flatten(),
+            'Error': y - y_pred.flatten()
+        })
+        results_df.to_csv(filename, index=False)
+        print(f"Data saved to {filename}")
+    
+    return r2, rmse, mae
+
+def evaluate_model_gpr(X_train_scaled, y_train, X_test_scaled, y_test, model, save_csv=False, train_filename='train_performance.csv', test_filename='test_performance.csv'):
+    """
+    トレーニングデータとテストデータの両方でモデルの性能を評価します。
+    
+    Parameters:
+    X_train_scaled : pd.DataFrame
+        標準化されたトレーニングデータの説明変数
+    y_train : pd.Series
+        トレーニングデータの目的変数
+    X_test_scaled : pd.DataFrame
+        標準化されたテストデータの説明変数
+    y_test : pd.Series
+        テストデータの目的変数
+    model : sklearn model
+        評価する訓練済みのモデル
+    save_csv : bool, optional
+        結果をCSVファイルに保存するかどうかを指定 (default is False)
+    train_filename : str, optional
+        トレーニングデータの予測結果を保存するCSVファイルの名前 (default is 'train_performance.csv')
+    test_filename : str, optional
+        テストデータの予測結果を保存するCSVファイルの名前 (default is 'test_performance.csv')
+    """
+    print("Evaluating Training Data")
+    evaluate_performance_gpr(X_train_scaled, y_train, y_train, model, save_to_csv=save_csv, filename=train_filename)
+    print("Evaluating Test Data")
+    evaluate_performance_gpr(X_test_scaled, y_test, y_train, model, save_to_csv=save_csv, filename=test_filename)
+
