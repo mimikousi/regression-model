@@ -10,6 +10,18 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.tree import DecisionTreeRegressor, plot_tree
 from sklearn.ensemble import RandomForestRegressor
 
+def load_data():
+    df = pd.read_csv('debutanizer_data.csv', header=0)
+    # 時系列データなので、実務データを想定しindexに時刻を割り当てる
+    start_datetime = '2024-01-01 00:00:00'
+    n = len(df)
+    date_index = pd.date_range(start=start_datetime, periods=n, freq='min') 
+    df.index = date_index
+    # 目的変数の測定時間を考慮（5分間）
+    df['y'] = df['y'].shift(5)
+    df = df.dropna()
+    return df
+
 def evaluate_performance_std(X, y, y_train, model, save_to_csv=False, filename='performance.csv'):
     """
     モデルの性能を評価し、結果をプロットします。
